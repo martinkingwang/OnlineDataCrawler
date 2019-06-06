@@ -147,41 +147,11 @@ namespace OnlineDataCrawler.Util
         }
 
 
-        private void CreateIndex<TDoc>(IMongoCollection<TDoc> col, string[] indexFields, CreateIndexOptions options = null)
-        {
-            if (indexFields == null)
-            {
-                return;
-            }
-            IndexKeysDefinitionBuilder<TDoc> indexKeys = Builders<TDoc>.IndexKeys;
-            IndexKeysDefinition<TDoc> keys = null;
-            if (indexFields.Length > 0)
-            {
-                keys = indexKeys.Descending(indexFields[0]);
-            }
-            for (int i = 1; i < indexFields.Length; i++)
-            {
-                string strIndex = indexFields[i];
-                keys = keys.Descending(strIndex);
-            }
-
-            if (keys != null)
-            {
-                col.Indexes.CreateOne(keys, options);
-            }
-
-        }
-
         #endregion
 
         public bool CollectionExists(string name)
         {
             return CollectionExists(GetMongoDatabase(), name);
-        }
-
-        public void CreateCollectionIndex<TDoc>(string collectionName, string[] indexFields, CreateIndexOptions options = null)
-        {
-            CreateIndex(GetMongoCollection<TDoc>(collectionName), indexFields, options);
         }
 
         public void CreateCollection<TDoc>(string[] indexFields = null, CreateIndexOptions options = null)
@@ -194,7 +164,6 @@ namespace OnlineDataCrawler.Util
         {
             IMongoDatabase mongoDatabase = GetMongoDatabase();
             mongoDatabase.CreateCollection(collectionName);
-            CreateIndex(GetMongoCollection<TDoc>(collectionName), indexFields, options);
         }
 
 
@@ -359,7 +328,7 @@ namespace OnlineDataCrawler.Util
             colleciton.DeleteMany(filter, options);
         }
 
-        public async System.Threading.Tasks.Task CreateIndexesAsync<TDoc>(Expression<Func<TDoc, object>>[] index, int[] asc)
+        public void CreateIndexes<TDoc>(Expression<Func<TDoc, object>>[] index, int[] asc)
         {
             if (index.Length != asc.Length)
             {
@@ -393,9 +362,9 @@ namespace OnlineDataCrawler.Util
             }
             CreateIndexModel<TDoc> model = new CreateIndexModel<TDoc>(indexes);
             var collection = GetMongoCollection<TDoc>(typeof(TDoc).Name);
-            string result = await collection.Indexes.CreateOneAsync(model);
+            string result = collection.Indexes.CreateOne(model);
         }
-
+        
         public void ClearCollection<TDoc>(string collectionName)
         {
             IMongoCollection<TDoc> colleciton = GetMongoCollection<TDoc>(collectionName);

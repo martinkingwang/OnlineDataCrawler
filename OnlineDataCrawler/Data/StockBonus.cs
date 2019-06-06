@@ -6,10 +6,11 @@ using System.Text;
 using System.Threading;
 using MongoDB.Bson;
 using OnlineDataCrawler.Util;
+using System.Linq.Expressions;
 
 namespace OnlineDataCrawler.Data
 {
-    public class StockBonus
+    public class StockBonus : IDatabaseObject
     {
 
         private const string StockBonusURL = "http://vip.stock.finance.sina.com.cn/corp/go.php/vISSUE_ShareBonus/stockid/{0}.phtml";
@@ -421,6 +422,29 @@ namespace OnlineDataCrawler.Data
                     return true;
             }
             return false;
+        }
+
+        public bool ChcekBadataseIndex()
+        {
+            var dbHelper = DataStorage.GetInstance().DBHelper;
+            if (!dbHelper.CollectionExists(typeof(StockBonus).Name))
+            {
+                var type = typeof(StockBonus);
+                string[] name = new string[type.GetProperties().Length];
+                for (int i = 0; i < name.Length; i++)
+                {
+                    name[i] = type.GetProperties()[i].Name;
+                }
+                dbHelper.CreateCollection<StockBonus>(name);
+            }
+            List<Expression<Func<StockBonus, object>>> fields = new List<Expression<Func<StockBonus, object>>>();
+            List<int> direction = new List<int>();
+            fields.Add(x => x.Stock.InnerID);
+            direction.Add(1);
+            fields.Add(x => x.BonusListDate);
+            direction.Add(-1);
+            dbHelper.CreateIndexes<StockBonus>(fields.ToArray(), direction.ToArray());
+            return true;
         }
     }
 }

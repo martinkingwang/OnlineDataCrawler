@@ -3,13 +3,14 @@ using OnlineDataCrawler.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace OnlineDataCrawler.Data
 {
-    public class StockBasic
+    public class StockBasic :IDatabaseObject
     {
         private const string AllStockURL = "http://nufm.dfcfw.com/EM_Finance2014NumericApplication/JS.aspx?cb=jQuery11240744221785830699_1553645836529&type=CT&token=4f1862fc3b5e77c150a2b985b12db0fd&sty=FCOIATC&js=(%7Bdata%3A%5B(x)%5D%2CrecordsFiltered%3A(tot)%7D)&cmd={2}&st=(Code)&sr=1&p={0}&ps=20&_={1}";
         private const string CmdShanghai = "C.2";
@@ -142,6 +143,27 @@ namespace OnlineDataCrawler.Data
             }
             StockBasic stock = (StockBasic)obj;
             return StockID.Equals(stock.StockID);
+        }
+
+        public bool ChcekBadataseIndex()
+        {
+            var dbHelper = DataStorage.GetInstance().DBHelper;
+            if (!dbHelper.CollectionExists(typeof(StockBasic).Name))
+            {
+                var type = typeof(StockBasic);
+                string[] name = new string[type.GetProperties().Length];
+                for (int i = 0; i < name.Length; i++)
+                {
+                    name[i] = type.GetProperties()[i].Name;
+                }
+                dbHelper.CreateCollection<StockBasic>(name);
+            }
+            List<Expression<Func<StockBasic, object>>> fields = new List<Expression<Func<StockBasic, object>>>();
+            List<int> direction = new List<int>();
+            fields.Add(x => x.InnerID);
+            direction.Add(1);
+            dbHelper.CreateIndexes<StockBasic>(fields.ToArray(), direction.ToArray());
+            return true;
         }
     }
 }

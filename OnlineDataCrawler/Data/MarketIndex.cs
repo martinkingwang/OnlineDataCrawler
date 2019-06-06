@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 using OnlineDataCrawler.Util;
 using HtmlAgilityPack;
 using MongoDB.Bson;
+using System.Linq.Expressions;
 
 namespace OnlineDataCrawler.Data
 {
-    public class MarketIndex
+    public class MarketIndex : IDatabaseObject
     {
         DateTime _date;
         public ObjectId id
@@ -119,6 +120,27 @@ namespace OnlineDataCrawler.Data
                 }
             }
             return indices;
+        }
+
+        public bool ChcekBadataseIndex()
+        {
+            var dbHelper = DataStorage.GetInstance().DBHelper;
+            if (!dbHelper.CollectionExists(typeof(MarketIndex).Name))
+            {
+                var type = typeof(MarketIndex);
+                string[] name = new string[type.GetProperties().Length];
+                for (int i = 0; i < name.Length; i++)
+                {
+                    name[i] = type.GetProperties()[i].Name;
+                }
+                dbHelper.CreateCollection<MarketIndex>(name);
+            }
+            List<Expression<Func<MarketIndex, object>>> fields = new List<Expression<Func<MarketIndex, object>>>();
+            List<int> direction = new List<int>();
+            fields.Add(x => x.Date);
+            direction.Add(-1);
+            dbHelper.CreateIndexes<MarketIndex>(fields.ToArray(), direction.ToArray());
+            return true;
         }
     }
 }

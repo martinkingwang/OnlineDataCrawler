@@ -3,12 +3,13 @@ using Newtonsoft.Json.Linq;
 using OnlineDataCrawler.Util;
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
 
 namespace OnlineDataCrawler.Data
 {
-    public class StockHistoryPrice
+    public class StockHistoryPrice :IDatabaseObject
     {
         private const string URL_HISTORY_DATA = "http://q.stock.sohu.com/hisHq?code=cn_{0}&start={1}&end={2}&stat=1&order=D&period=d&callback=historySearchHandler&rt=jsonp&r=0.27381376446028094&0.1785492201739558";
 
@@ -161,6 +162,29 @@ namespace OnlineDataCrawler.Data
                 return false;
             if (!Date.Equals(price2.Date))
                 return false;
+            return true;
+        }
+
+        public bool ChcekBadataseIndex()
+        {
+            var dbHelper = DataStorage.GetInstance().DBHelper;
+            if (!dbHelper.CollectionExists(typeof(StockHistoryPrice).Name))
+            {
+                var type = typeof(StockHistoryPrice);
+                string[] name = new string[type.GetProperties().Length];
+                for (int i = 0; i < name.Length; i++)
+                {
+                    name[i] = type.GetProperties()[i].Name;
+                }
+                dbHelper.CreateCollection<StockHistoryPrice>(name);
+            }
+            List<Expression<Func<StockHistoryPrice, object>>> fields = new List<Expression<Func<StockHistoryPrice, object>>>();
+            List<int> direction = new List<int>();
+            fields.Add(x => x.Stock.InnerID);
+            direction.Add(1);
+            fields.Add(x => x.Date);
+            direction.Add(-1);
+            dbHelper.CreateIndexes<StockHistoryPrice>(fields.ToArray(), direction.ToArray());
             return true;
         }
     }

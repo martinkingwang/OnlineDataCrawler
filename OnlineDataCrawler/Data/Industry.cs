@@ -2,12 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 
 namespace OnlineDataCrawler.Data
 {
-    public class Industry
+    public class Industry : IDatabaseObject
     {
         public static List<Industry> GetAllStockIndustry()
         {
@@ -447,6 +448,29 @@ namespace OnlineDataCrawler.Data
         public override bool Equals(object obj)
         {
             return obj.GetType().Equals(typeof(Industry)) && ((Industry)obj).IndustryName == IndustryName && ((Industry)obj).Date == Date;
+        }
+
+        public bool ChcekBadataseIndex()
+        {
+            var dbHelper = DataStorage.GetInstance().DBHelper;
+            if (!dbHelper.CollectionExists(typeof(Industry).Name))
+            {
+                var type = typeof(Industry);
+                string[] name = new string[type.GetProperties().Length];
+                for (int i = 0; i < name.Length; i++)
+                {
+                    name[i] = type.GetProperties()[i].Name;
+                }
+                dbHelper.CreateCollection<Industry>(name);
+            }
+            List<Expression<Func<Industry, object>>> fields = new List<Expression<Func<Industry, object>>>();
+            List<int> direction = new List<int>();
+            fields.Add(x => x.IndustryName);
+            direction.Add(1);
+            fields.Add(x => x.Date);
+            direction.Add(-1);
+            dbHelper.CreateIndexes<Industry>(fields.ToArray(), direction.ToArray());
+            return true;
         }
     }
 

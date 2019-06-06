@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Linq.Expressions;
 
 namespace OnlineDataCrawler.Data
 {
@@ -46,9 +47,14 @@ namespace OnlineDataCrawler.Data
                 }
                 dbHelper.CreateCollection<ComplexFactor>(name);
             }
-            var collection = dbHelper.CreateIndexesAsync()
+            List<Expression<Func<ComplexFactor, object>>> fields = new List<Expression<Func<ComplexFactor, object>>>();
+            List<int> direction = new List<int>();
+            fields.Add(x => x.Stock.InnerID);
+            direction.Add(1);
+            fields.Add(x => x.Date);
+            direction.Add(-1);
+            dbHelper.CreateIndexes<ComplexFactor>(fields.ToArray(), direction.ToArray());
             return true;
-
         }
     }
 }

@@ -6,10 +6,11 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Linq.Expressions;
 
 namespace OnlineDataCrawler.Data
 {
-    public class FinancialReport
+    public class FinancialReport : IDatabaseObject
     {
         //http://f10.eastmoney.com/NewFinanceAnalysis/zcfzbAjax?companyType=4&reportDateType=1&reportType=1&endDate=&code=SH600203
         private const string FinancialReportAssestUrl = "http://f10.eastmoney.com/NewFinanceAnalysis/zcfzbAjax?companyType={1}&reportDateType={2}&reportType=1&endDate={3}&code={0}";
@@ -206,6 +207,30 @@ namespace OnlineDataCrawler.Data
                 return false;
             }
 
+            return true;
+        }
+
+        public bool ChcekBadataseIndex()
+        {
+            var dbHelper = DataStorage.GetInstance().DBHelper;
+            if (!dbHelper.CollectionExists(typeof(FinancialReport).Name))
+            {
+                var type = GetType();
+                var properties = type.GetProperties();
+                string[] names = new string[properties.Length];
+                for(int i = 0; i < properties.Length; i++)
+                {
+                    names[i] = properties[i].Name;
+                }
+                dbHelper.CreateCollection<FinancialReport>(names);
+            }
+            List<Expression<Func<FinancialReport, object>>> fields = new List<Expression<Func<FinancialReport, object>>>();
+            List<int> direction = new List<int>();
+            fields.Add(x => x.Stock.InnerID);
+            direction.Add(1);
+            fields.Add(x => x.ReportDate);
+            direction.Add(-1);
+            dbHelper.CreateIndexes<FinancialReport>(fields.ToArray(), direction.ToArray());
             return true;
         }
     }
