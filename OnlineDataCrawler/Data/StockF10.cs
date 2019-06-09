@@ -51,7 +51,7 @@ namespace OnlineDataCrawler.Data
             return f10;
         }
 
-        public bool ChcekBadataseIndex()
+        public bool CheckDatabaseIndex()
         {
             var dbHelper = DataStorage.GetInstance().DBHelper;
             if (!dbHelper.CollectionExists(typeof(StockF10).Name))

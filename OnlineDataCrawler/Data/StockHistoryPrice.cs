@@ -145,7 +145,7 @@ namespace OnlineDataCrawler.Data
         /// <summary>
         /// 复权因子
         /// </summary>
-        public double AnswerAuthority
+        public decimal AnswerAuthority
         {
             get;
             set;
@@ -165,7 +165,7 @@ namespace OnlineDataCrawler.Data
             return true;
         }
 
-        public bool ChcekBadataseIndex()
+        public bool CheckDatabaseIndex()
         {
             var dbHelper = DataStorage.GetInstance().DBHelper;
             if (!dbHelper.CollectionExists(typeof(StockHistoryPrice).Name))

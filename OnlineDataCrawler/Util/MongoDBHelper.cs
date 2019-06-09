@@ -365,6 +365,14 @@ namespace OnlineDataCrawler.Util
             string result = collection.Indexes.CreateOne(model);
         }
         
+        public List<TDoc> Like<TDoc>(string parameterName, string regex)
+        {
+            IMongoCollection<TDoc> collection = GetMongoCollection<TDoc>(typeof(TDoc).Name);
+            var builder = Builders<TDoc>.Filter;
+            var filter = builder.Regex(parameterName, new BsonRegularExpression(regex));
+            return collection.Find(filter).ToList();
+        }
+
         public void ClearCollection<TDoc>(string collectionName)
         {
             IMongoCollection<TDoc> colleciton = GetMongoCollection<TDoc>(collectionName);

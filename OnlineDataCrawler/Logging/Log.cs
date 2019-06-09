@@ -20,9 +20,21 @@ namespace OnlineDataCrawler.Logging
         static Log()
         {
             string filePath = Config.Get("LogConfig");
-            var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
+            var assembly = Assembly.GetEntryAssembly();
+            var logRepository = LogManager.CreateRepository(assembly, typeof(log4net.Repository.Hierarchy.Hierarchy));
             XmlConfigurator.Configure(logRepository, new FileInfo(filePath));
-            log = LogManager.GetLogger(Assembly.GetEntryAssembly().FullName, "logger");
+            log = LogManager.GetLogger(assembly, typeof(Program));
+            var appenders = log4net.LogManager.GetRepository(assembly).GetAppenders();
+            foreach (var appender in appenders)
+            {
+                var rollingFileAppender = appender as log4net.Appender.RollingFileAppender;
+                if (rollingFileAppender != null)
+                {
+                    rollingFileAppender.ImmediateFlush = true;
+                    rollingFileAppender.LockingModel = new log4net.Appender.FileAppender.MinimalLock();
+                    rollingFileAppender.ActivateOptions();
+                }
+            }
         }
 
         /// <summary>
@@ -81,6 +93,37 @@ namespace OnlineDataCrawler.Logging
         public static void Error(string format, params object[] args)
         {
             Error(string.Format(format, args));
+        }
+
+        public static void Clear()
+        {
+            var assembly = Assembly.GetEntryAssembly();
+            var appenders = log4net.LogManager.GetRepository(assembly).GetAppenders();
+            foreach (var appender in appenders)
+            {
+                var rollingFileAppender = appender as log4net.Appender.RollingFileAppender;
+                if (rollingFileAppender != null)
+                {
+                    var path = rollingFileAppender.File;
+                    File.Delete(path);
+                }
+            }
+        }
+
+        public static string GetLogFilePath()
+        {
+            var assembly = Assembly.GetEntryAssembly();
+            var appenders = log4net.LogManager.GetRepository(assembly).GetAppenders();
+            foreach (var appender in appenders)
+            {
+                var rollingFileAppender = appender as log4net.Appender.RollingFileAppender;
+                if (rollingFileAppender != null)
+                {
+                    var path = rollingFileAppender.File;
+                    return path;
+                }
+            }
+            return "";
         }
 
         /// <summary>

@@ -60,22 +60,23 @@ namespace OnlineDataCrawler.Data
                             case 0:
                                 DateTime date;
                                 bool success = DateTime.TryParseExact(col.InnerText, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.AdjustToUniversal, out date);
-                                bonus.AllotmentBasementDate = new DateTime(date.Year - 1, 12, 31);
+                                if(success)
+                                    bonus.AllotmentBasementDate = new DateTime(date.Year - 1, 12, 31);
                                 break;
                             case 1:
-                                double gift = double.Parse(col.InnerText);
+                                decimal gift = decimal.Parse(col.InnerText);
                                 bonus.BonusStockGift = gift;
                                 if (gift != 0)
                                     bonus.BonusType = bonus.BonusType | StockBonus.BonusTypeGift;
                                 break;
                             case 2:
-                                double increase = double.Parse(col.InnerText);
+                                decimal increase = decimal.Parse(col.InnerText);
                                 bonus.BonusStockIncrease = increase;
                                 if (increase != 0)
                                     bonus.BonusType = bonus.BonusType | StockBonus.BonusTypeIncrease;
                                 break;
                             case 3:
-                                double cash = double.Parse(col.InnerText);
+                                decimal cash = decimal.Parse(col.InnerText);
                                 bonus.BonusCash = cash;
                                 if (cash != 0)
                                     bonus.BonusType = bonus.BonusType | StockBonus.BonusTypeCash;
@@ -121,8 +122,15 @@ namespace OnlineDataCrawler.Data
                 }
                 if (isContinue)
                 {
-                    bonus.id = ObjectId.GenerateNewId(bonus.AllotmentBasementDate.Value);
-                    result.Add(bonus);
+                    if(bonus.AllotmentBasementDate == null)
+                    {
+                        break;
+                    }
+                    if (bonus.AllotmentBasementDate.Value > new DateTime(1980, 1, 1))
+                    {
+                        bonus.id = ObjectId.GenerateNewId(bonus.AllotmentBasementDate.Value);
+                        result.Add(bonus);
+                    }
                 }
             }
             HtmlNode allotmentTable = node.SelectNodes("//*[@id=\"sharebonus_2\"]/tbody")[0];
@@ -139,7 +147,7 @@ namespace OnlineDataCrawler.Data
                 bool isContinue = true;
                 StockBonus bonus = new StockBonus();
                 DateTime date;
-                bool success = DateTime.TryParseExact(col.InnerText, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.AdjustToUniversal, out date);
+                bool success = DateTime.TryParseExact(col.InnerText, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.AssumeLocal, out date);
                 if (success)
                 {
                     sb.Clear();
@@ -204,7 +212,7 @@ namespace OnlineDataCrawler.Data
                                 case "配股比例（10配）":
                                     try
                                     {
-                                        bonus.Allotment = double.Parse(listItem[1].InnerText);
+                                        bonus.Allotment = decimal.Parse(listItem[1].InnerText);
                                     }
                                     catch
                                     {
@@ -214,7 +222,7 @@ namespace OnlineDataCrawler.Data
                                 case "配股价":
                                     try
                                     {
-                                        bonus.AllotmentPrice = double.Parse(listItem[1].InnerText);
+                                        bonus.AllotmentPrice = decimal.Parse(listItem[1].InnerText);
                                     }
                                     catch
                                     {
@@ -236,10 +244,19 @@ namespace OnlineDataCrawler.Data
                     }
                     if (bonus.AllotmentBasementDate == null)
                     {
-                        bonus.AllotmentBasementDate = new DateTime(bonus.AnnounceDate.Value.Year - 1, 12, 31);
+                        if(bonus.AnnounceDate != null)
+                            bonus.AllotmentBasementDate = new DateTime(bonus.AnnounceDate.Value.Year - 1, 12, 31);
+                        else if(bonus.BonusListDate != null)
+                            bonus.AllotmentBasementDate = new DateTime(bonus.BonusListDate.Value.Year - 1, 12, 31);
                     }
                     bonus.BonusType = StockBonus.BonusTypeAllotment;
-                    bonus.id = ObjectId.GenerateNewId(bonus.AllotmentBasementDate.Value);
+                    if (bonus.AllotmentBasementDate != null)
+                        bonus.id = ObjectId.GenerateNewId(bonus.AllotmentBasementDate.Value);
+                    else if (bonus.BonusExemptionDate != null)
+                        bonus.id = ObjectId.GenerateNewId(bonus.BonusExemptionDate.Value);
+                    else
+                        bonus.id = ObjectId.GenerateNewId();
+                    bonus.Stock = stock;
                     result.Add(bonus);
                     if (!isContinue)
                     {
@@ -270,7 +287,7 @@ namespace OnlineDataCrawler.Data
         /// <summary>
         /// 送股
         /// </summary>
-        public double BonusStockGift
+        public decimal BonusStockGift
         {
             get;
             set;
@@ -279,7 +296,7 @@ namespace OnlineDataCrawler.Data
         /// <summary>
         /// 转增
         /// </summary>
-        public double BonusStockIncrease
+        public decimal BonusStockIncrease
         {
             get;
             set;
@@ -288,7 +305,7 @@ namespace OnlineDataCrawler.Data
         /// <summary>
         /// 现金分红
         /// </summary>
-        public double BonusCash
+        public decimal BonusCash
         {
             get;
             set;
@@ -297,7 +314,7 @@ namespace OnlineDataCrawler.Data
         /// <summary>
         /// 配股
         /// </summary>
-        public double Allotment
+        public decimal Allotment
         {
             get;
             set;
@@ -306,7 +323,7 @@ namespace OnlineDataCrawler.Data
         /// <summary>
         /// 配股价格
         /// </summary>
-        public double AllotmentPrice
+        public decimal AllotmentPrice
         {
             get;
             set;
@@ -424,7 +441,7 @@ namespace OnlineDataCrawler.Data
             return false;
         }
 
-        public bool ChcekBadataseIndex()
+        public bool CheckDatabaseIndex()
         {
             var dbHelper = DataStorage.GetInstance().DBHelper;
             if (!dbHelper.CollectionExists(typeof(StockBonus).Name))

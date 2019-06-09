@@ -16,7 +16,6 @@ namespace OnlineDataCrawler.Data
         private List<StockBasic> stocks;
         private List<StockF10> f10s;
         private MongoDBHelper dbHelper;
-        private ConcurrentDictionary<StockBasic, List<FinancialReport>> allReports;
 
         private static DataStorage dataStorage;
 
@@ -25,7 +24,6 @@ namespace OnlineDataCrawler.Data
             if (dataStorage == null)
             {
                 dataStorage = new DataStorage();
-                dataStorage.CheckLocalData();
             }
             return dataStorage;
         }
@@ -37,13 +35,6 @@ namespace OnlineDataCrawler.Data
             BsonClassMap.RegisterClassMap<ProfitStatement>();
             BsonClassMap.RegisterClassMap<IndustrySmbol>();
             dbHelper = new MongoDBHelper();
-            allReports = new ConcurrentDictionary<StockBasic, List<FinancialReport>>();
-            var stocks = GetAllStocks();
-            foreach (var stock in stocks)
-            {
-                List<FinancialReport> financialReports = dbHelper.Find<FinancialReport>(x => x.Stock.InnerID == stock.InnerID);
-                allReports.AddOrUpdate(stock, financialReports, (k, v) => v.Concat(financialReports).ToList());
-            }
         }
 
         public MongoDBHelper DBHelper
@@ -144,15 +135,12 @@ namespace OnlineDataCrawler.Data
 
         public List<FinancialReport> GetFinancialReports(StockBasic sb, DateTime? endTime = null, DateTime? startTime = null)
         {
+            if (endTime == null)
+                endTime = DateTime.Now;
+            if (startTime == null)
+                startTime = new DateTime(1980, 1, 1);
             List<FinancialReport> reports = null;
-            foreach (var key in allReports.Keys)
-            {
-                if (key.Equals(sb))
-                {
-                    reports = allReports[key];
-                    break;
-                }
-            }
+            reports = DBHelper.Find<FinancialReport>(x => x.Stock.InnerID == sb.InnerID && x.ReportDate <= endTime.Value && x.ReportDate >= startTime.Value);
             if (reports == null)
             {
                 reports = new List<FinancialReport>();
@@ -181,17 +169,14 @@ namespace OnlineDataCrawler.Data
             return result.ToList();
         }
 
-        public List<FinancialReport> GetFinancialReports(StockBasic stock, DateTime startTime, DateTime endTime, FinancialReportType type)
+        public List<FinancialReport> GetFinancialReports(StockBasic stock, DateTime? startTime, DateTime? endTime, FinancialReportType type)
         {
+            if (endTime == null)
+                endTime = DateTime.Now;
+            if (startTime == null)
+                startTime = new DateTime(1980, 1, 1);
             List<FinancialReport> reports = null;
-            foreach (var key in allReports.Keys)
-            {
-                if (key.Equals(stock))
-                {
-                    reports = allReports[key];
-                    break;
-                }
-            }
+            reports = dbHelper.Find<FinancialReport>(x => x.Stock.InnerID == stock.InnerID && x.ReportDate <= endTime && x.ReportDate >= startTime);
             if (reports == null || reports.Count == 0)
             {
                 reports = new List<FinancialReport>();
@@ -210,9 +195,17 @@ namespace OnlineDataCrawler.Data
                     desiredReportType = typeof(ProfitStatement);
                     break;
             }
-            IEnumerable<FinancialReport> selectedReports = from rep in reports
-                                                           where rep.GetType() == desiredReportType
-                                                           select rep;
+            IEnumerable<FinancialReport> selectedReports = null;
+            if (desiredReportType != null)
+            {
+                selectedReports = from rep in reports
+                                  where rep.GetType() == desiredReportType
+                                  select rep;
+            }
+            else
+            {
+                selectedReports = reports.AsEnumerable();
+            }
             return selectedReports.ToList();
         }
 
@@ -454,8 +447,22 @@ namespace OnlineDataCrawler.Data
             }
         }
 
-        public void UpdateStockPrice()
+        public List<Industry> GetIndustry(string name, DateTime? startDate, DateTime? endDate)
         {
+            if (startDate == null)
+                startDate = new DateTime(1980, 1, 1);
+            if (endDate == null)
+                endDate = DateTime.Now;
+            var industries = dbHelper.Like<Industry>("IndustryName", name);
+            var selectIndustries = from i in industries
+                                   where i.Date <= endDate && i.Date >= startDate
+                                   select i;
+            return selectIndustries.ToList();
+        }
+
+        public int UpdateStockPrice()
+        {
+            int count = 0;
             List<StockBasic> stocks = GetAllStocks();
             foreach (StockBasic stock in stocks)
             {
@@ -469,17 +476,18 @@ namespace OnlineDataCrawler.Data
                     }
                     else
                     {
-                        GetHistoryPrices(stock, prices[0].Date, DateTime.Now);
+                        count += GetHistoryPrices(stock, prices[0].Date, DateTime.Now).Count();
                     }
                 }
                 else
                 {
-                    GetHistoryPrices(stock, new DateTime(2008, 1, 1), DateTime.Now);
+                    count += GetHistoryPrices(stock, new DateTime(2008, 1, 1), DateTime.Now).Count;
                 }
             }
+            return count;
         }
         
-        public void UpdateAllStocks()
+        public int UpdateAllStocks()
         {
             List<StockBasic> currentStocks = dbHelper.Find<StockBasic>(x => x.StockID != null);
             List<StockBasic> onlineStocks = StockBasic.GetAllStocks();
@@ -530,6 +538,7 @@ namespace OnlineDataCrawler.Data
                 dbHelper.InsertMany(onlineStocks);
             if (f10s.Count > 0)
                 dbHelper.InsertMany(f10s);
+            return onlineStocks.Count;
         }
         
         public void UpdateFinancialReport()
@@ -634,41 +643,20 @@ namespace OnlineDataCrawler.Data
             dbHelper.InsertMany(result);
         }
 
-        private void UpdateFinancialReportTime()
-        {
-            foreach (var key in allReports.Keys)
-            {
-                var list = allReports[key];
-                foreach (var item in list)
-                {
-
-                }
-            }
-        }
-        public void UpdateAllFinancialReports1()
+        public int UpdateAllFinancialReports1()
         {
             List<StockBasic> stockList = GetAllStocks();
-            Dictionary<StockBasic, List<FinancialReport>> stockFinancialReport = new Dictionary<StockBasic, List<FinancialReport>>();
             int count = 0;
             foreach (StockBasic stock in stockList)
             {
                 bool found = false;
-                StockBasic foundKey = null;
-                foreach (var key in allReports.Keys)
-                {
-                    if (key.Equals(stock))
-                    {
-                        found = true;
-                        foundKey = key;
-                        break;
-                    }
-                }
+                var stockFinancialReports = dbHelper.Find<FinancialReport>(x => x.Stock.InnerID == stock.InnerID);
+                found = !(stockFinancialReports == null || stockFinancialReports.Count == 0);
                 if (!found)
                 {
                     try
                     {
                         var list = FinancialReport.GetFinancialReports(stock, GetF10(stock), null, null);
-                        allReports.TryAdd(stock, list);
                         dbHelper.InsertMany(list);
                         count += list.Count;
                     }
@@ -680,8 +668,7 @@ namespace OnlineDataCrawler.Data
                 }
                 else
                 {
-                    var reports = allReports[foundKey];
-                    IOrderedEnumerable<FinancialReport> reportList = from rep in reports
+                    IOrderedEnumerable<FinancialReport> reportList = from rep in stockFinancialReports
                                                                      where rep.Stock.Equals(stock)
                                                                      orderby rep.ReportDate
                                                                      select rep;
@@ -690,26 +677,36 @@ namespace OnlineDataCrawler.Data
                     var lastSeason = DateHelper.LastSeasonLastDay(DateTime.Now);
                     if (last.ReportDate != lastSeason)
                     {
-                        List<FinancialReport> list = FinancialReport.GetFinancialReports(stock, f10, reportList.Last().ReportDate, null);
-                        if (list.Count > 0)
+                        try
                         {
-                            var insert = from rep in list
-                                         where rep.ReportDate == lastSeason
-                                         select rep;
-                            if (insert.Count() > 0)
-                                dbHelper.InsertMany(insert);
-                            count += insert.Count();
+                            List<FinancialReport> list = FinancialReport.GetFinancialReports(stock, f10, reportList.Last().ReportDate, null);
+                            if (list.Count > 0)
+                            {
+                                var insert = from rep in list
+                                             where rep.ReportDate == lastSeason
+                                             select rep;
+                                if (insert.Count() > 0)
+                                    dbHelper.InsertMany(insert);
+                                count += insert.Count();
+                            }
+                        }
+                        catch(Exception ex)
+                        {
+                            Log.Trace(ex.StackTrace);
+                            Log.Trace("无可用报表");
                         }
                     }
                 }
             }
             Log.Trace("total update " + count + " financial reports.");
+            return count;
         }
         
-        public void UpdateAllBonusShare()
+        public int UpdateAllBonusShare()
         {
             List<StockBasic> stocks = GetAllStocks();
             List<StockBonus> result = new List<StockBonus>();
+            int count = 0;
             foreach (StockBasic stock in stocks)
             {
                 List<StockBonus> bonus;
@@ -723,9 +720,22 @@ namespace OnlineDataCrawler.Data
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.StackTrace);
+                    Log.Error(ex.Message);
                     dbHelper.CreateCollection<StockBonus>();
                     bonus = new List<StockBonus>();
+                }
+                var sortedBonus = bonus.OrderByDescending(x => x.AllotmentBasementDate);
+                if(sortedBonus.Count() > 0)
+                {
+                    if (sortedBonus.First().AllotmentBasementDate.HasValue)
+                    {
+                        var now = DateTime.Now;
+                        var allotmentBasementDate = sortedBonus.First().AllotmentBasementDate.Value;
+                        if(allotmentBasementDate.Year == now.Year - 1 && allotmentBasementDate.Month == 12 && allotmentBasementDate.Day == 31)
+                        {
+                            continue;
+                        }
+                    }
                 }
                 List<StockBonus> nBonus = StockBonus.GetAllBonus(stock);
                 foreach (StockBonus n in nBonus)
@@ -735,11 +745,34 @@ namespace OnlineDataCrawler.Data
                         result.Add(n);
                     }
                 }
+                nBonus.Clear();
+                nBonus = (from r in result
+                          where r.Stock.InnerID == stock.InnerID
+                          orderby r.BonusExemptionDate
+                          select r).ToList();
+                var stockPrices = dbHelper.Find<StockHistoryPrice>(x => x.Stock.InnerID == stock.InnerID && x.AnswerAuthority == 0).OrderBy(x=>x.Date);
+                if (stockPrices.Count() > 0)
+                {
+                    var lastStockPrice = DBHelper.Find<StockHistoryPrice>(x => x.Stock.InnerID == stock.InnerID && x.Date < stockPrices.First().Date).OrderByDescending(x=>x.Date);
+                    List<StockHistoryPrice> prices = null;
+                    if (lastStockPrice.Count() > 0)
+                        prices = ComplexFactor.ComputeComplexFactor(nBonus, stockPrices.ToList(), lastStockPrice.First());
+                    else
+                        prices = ComplexFactor.ComputeComplexFactor(nBonus, stockPrices.ToList(), null);
+                    foreach(var pri in prices)
+                    {
+                        DBHelper.Update<StockHistoryPrice>(pri, x => x.id == pri.id);
+                    }
+                }
+                if(result.Count > 0)
+                    dbHelper.InsertMany(result);
+                count += result.Count;
+                result.Clear();
             }
-            dbHelper.InsertMany(result);
+            return count;
         }
         
-        public void UpdateAllMarketIndex()
+        public int UpdateAllMarketIndex()
         {
             List<MarketIndex> indices;
             List<MarketIndex> result = new List<MarketIndex>();
@@ -770,41 +803,49 @@ namespace OnlineDataCrawler.Data
                 }
             }
             dbHelper.InsertMany(result);
+            return result.Count;
         }
         
-        public void UpdateAllIndustries()
+        public int UpdateAllIndustries()
         {
             List<Industry> currentIndustries = dbHelper.Find<Industry>(x => x.IndustryName != null);
             List<Industry> CalcIndustries = Industry.GetAllStockIndustry();
             IEnumerable<Industry> toAddIndustries = from ind in CalcIndustries
                                                     where !currentIndustries.Contains(ind)
                                                     select ind;
-            dbHelper.InsertMany(toAddIndustries);
+            if(toAddIndustries.Count() > 0)
+                dbHelper.InsertMany(toAddIndustries);
+            return toAddIndustries.Count();
         }
 
-        public void CheckLocalData()
+        public string CheckLocalData()
         {
             var lastRunTime = Config.GetDateTime("UpdateAllStock", new DateTime(1, 1, 1));
             var timespan = DateTime.Now - lastRunTime;
+            int count = 0;
+            string result = "";
             if (timespan.TotalDays > 7)
             {
                 Log.Trace("update all stock runs at " + lastRunTime.ToLongDateString() + ", update it");
-                UpdateAllStocks();
+                count = UpdateAllStocks();
                 Config.SetDateTime("UpdateAllStock", DateTime.Now);
+                result += "Total get " + count + " new stock.";
             }
             else
             {
                 Log.Trace("check all stock success.");
             }
-            var stockslist = GetAllStocks();
+            //var stockslist = GetAllStocks();
 
             lastRunTime = Config.GetDateTime("UpdateAllFinancialReports", new DateTime(1, 1, 1));
             timespan = DateTime.Now - lastRunTime;
             if (timespan.TotalDays > 90)
             {
                 Log.Trace("update all financial reports at " + lastRunTime.ToLongDateString() + ", update it.");
-                UpdateAllFinancialReports1();
+                count = UpdateAllFinancialReports1();
                 Config.SetDateTime("UpdateAllFinancialReports", DateTime.Now);
+                Log.Trace("update all financial reports finished.");
+                result += "Total get " + count + " new financial reoorts.";
             }
             else
             {
@@ -815,8 +856,10 @@ namespace OnlineDataCrawler.Data
             if (timespan.TotalDays > 7)
             {
                 Log.Trace("update market index at " + lastRunTime.ToLongDateString() + ", update it.");
-                UpdateAllMarketIndex();
+                count = UpdateAllMarketIndex();
                 Config.SetDateTime("UpdateMarketIndex", DateTime.Now);
+                Log.Trace("update all market index finished.");
+                result += "Total get " + count + " new market index.";
             }
             else
             {
@@ -827,8 +870,10 @@ namespace OnlineDataCrawler.Data
             if (timespan.TotalDays > 90)
             {
                 Log.Trace("update All industries at " + lastRunTime.ToLongDateString() + ", update it.");
-                UpdateAllIndustries();
+                count = UpdateAllIndustries();
                 Config.SetDateTime("UpdateAllIndustries", DateTime.Now);
+                Log.Trace("update all industries finished.");
+                result += "Total get " + count + " new industry.";
             }
             else
             {
@@ -839,8 +884,10 @@ namespace OnlineDataCrawler.Data
             if (timespan.TotalDays > 7)
             {
                 Log.Trace("update All Stock Price at " + lastRunTime.ToLongDateString() + ", update it.");
-                UpdateStockPrice();
+                count = UpdateStockPrice();
                 Config.SetDateTime("UpdateStockPrice", DateTime.Now);
+                Log.Trace("update all stock prices finished.");
+                result += "Total get " + count + " new stock price.";
             }
             else
             {
@@ -851,13 +898,16 @@ namespace OnlineDataCrawler.Data
             if (timespan.TotalDays > 7)
             {
                 Log.Trace("update All Stock Bonus at " + lastRunTime.ToLongDateString() + ", update it.");
-                UpdateAllBonusShare();
+                count = UpdateAllBonusShare();
                 Config.SetDateTime("UpdateAllBonusShare", DateTime.Now);
+                Log.Trace("update all stock bonus finished.");
+                result += "Total get " + count + " new stock bonus.";
             }
             else
             {
                 Log.Trace("check stock bonus success.");
             }
+            return result;
         }
     }
 }

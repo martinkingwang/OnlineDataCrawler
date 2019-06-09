@@ -122,7 +122,7 @@ namespace OnlineDataCrawler.Data
             return indices;
         }
 
-        public bool ChcekBadataseIndex()
+        public bool CheckDatabaseIndex()
         {
             var dbHelper = DataStorage.GetInstance().DBHelper;
             if (!dbHelper.CollectionExists(typeof(MarketIndex).Name))

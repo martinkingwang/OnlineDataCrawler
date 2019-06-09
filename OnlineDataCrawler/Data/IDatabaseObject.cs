@@ -6,6 +6,6 @@ namespace OnlineDataCrawler.Data
 {
     public interface IDatabaseObject
     {
-        bool ChcekBadataseIndex();
+        bool CheckDatabaseIndex();
     }
 }

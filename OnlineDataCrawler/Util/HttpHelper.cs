@@ -39,6 +39,8 @@ namespace OnlineDataCrawler.Util
                 url = url.Substring(0, url.Length - 1);
             }
             HttpWebResponse httpResponse = CreateGetHttpResponse(url, cookies: cookies, userAgent: userAgent, referer: referer);
+            if (httpResponse == null)
+                return "";
             string Content = null;
             //缓冲区长度
             const int N_CacheLength = 10000;
@@ -47,23 +49,15 @@ namespace OnlineDataCrawler.Util
             int count = 0;
             //头部预读取缓冲区，字符串
             String cache = string.Empty;
+            //获取返回的Cookies，支持httponly
+            string cookiesDomain = httpResponse.ResponseUri.Host;
+
+            cookies = new CookieContainer();
+            CookieCollection httpHeaderCookies = SetCookie(httpResponse, cookiesDomain);
+            cookies.Add(httpHeaderCookies ?? httpResponse.Cookies);
 
             //创建流对象并解码
-            Stream ResponseStream;
-            switch (httpResponse.ContentEncoding.ToUpperInvariant())
-            {
-                case "GZIP":
-                    ResponseStream = new GZipStream(
-                        httpResponse.GetResponseStream(), CompressionMode.Decompress);
-                    break;
-                case "DEFLATE":
-                    ResponseStream = new DeflateStream(
-                        httpResponse.GetResponseStream(), CompressionMode.Decompress);
-                    break;
-                default:
-                    ResponseStream = httpResponse.GetResponseStream();
-                    break;
-            }
+            Stream ResponseStream = httpResponse.GetResponseStream();
             if (cookies == null)
                 cookies = new CookieContainer();
             foreach (Cookie cook in httpResponse.Cookies)
@@ -132,12 +126,7 @@ namespace OnlineDataCrawler.Util
                 ResponseStream.Close();
                 httpResponse.Close();
             }
-            //获取返回的Cookies，支持httponly
-            string cookiesDomain = httpResponse.ResponseUri.Host;
-
-            cookies = new CookieContainer();
-            CookieCollection httpHeaderCookies = SetCookie(httpResponse, cookiesDomain);
-            cookies.Add(httpHeaderCookies ?? httpResponse.Cookies);
+            
 
             return Content;
         }
@@ -220,8 +209,15 @@ namespace OnlineDataCrawler.Util
             if (cookies == null)
                 cookies = new CookieContainer();
             request.CookieContainer = cookies;
-
-            return request.GetResponse() as HttpWebResponse;
+            try
+            {
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                return response;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public static HttpWebResponse CreatePostHttpResponse(string url, string postData, int timeout = 60000, string userAgent = "", CookieContainer cookies = null, string referer = "")

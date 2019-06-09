@@ -210,7 +210,7 @@ namespace OnlineDataCrawler.Data
             return true;
         }
 
-        public bool ChcekBadataseIndex()
+        public bool CheckDatabaseIndex()
         {
             var dbHelper = DataStorage.GetInstance().DBHelper;
             if (!dbHelper.CollectionExists(typeof(FinancialReport).Name))
@@ -239,5 +239,6 @@ namespace OnlineDataCrawler.Data
         BalanceSheet = 1,
         ProfitStatement = 2,
         CashFlow = 3,
+        All = 4,
     }
 }

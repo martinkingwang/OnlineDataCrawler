@@ -145,7 +145,7 @@ namespace OnlineDataCrawler.Data
             return StockID.Equals(stock.StockID);
         }
 
-        public bool ChcekBadataseIndex()
+        public bool CheckDatabaseIndex()
         {
             var dbHelper = DataStorage.GetInstance().DBHelper;
             if (!dbHelper.CollectionExists(typeof(StockBasic).Name))

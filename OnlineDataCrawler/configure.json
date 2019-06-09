@@ -1,6 +1,9 @@
 {
-  "emailAddress": "18622608573@163.com",
   "emailServer": "smtp.163.com",
-  "emailPassword": "24307011wqm",
-  "LogConfig": "LogConfig.xml"
+  "LogConfig": "LogConfig.xml",
+  "UpdateAllStock": "20190608 05:32:12",
+  "UpdateAllFinancialReports": "20190608 05:47:29",
+  "UpdateMarketIndex": "20190608 05:48:00",
+  "UpdateAllIndustries": "20190608 05:51:50",
+  "UpdateStockPrice": "20190608 06:00:44"
 }

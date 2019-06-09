@@ -450,7 +450,7 @@ namespace OnlineDataCrawler.Data
             return obj.GetType().Equals(typeof(Industry)) && ((Industry)obj).IndustryName == IndustryName && ((Industry)obj).Date == Date;
         }
 
-        public bool ChcekBadataseIndex()
+        public bool CheckDatabaseIndex()
         {
             var dbHelper = DataStorage.GetInstance().DBHelper;
             if (!dbHelper.CollectionExists(typeof(Industry).Name))

@@ -34,7 +34,7 @@ namespace OnlineDataCrawler.Data
             set;
         }
 
-        public bool ChcekBadataseIndex()
+        public bool CheckDatabaseIndex()
         {
             var dbHelper = DataStorage.GetInstance().DBHelper;
             if (!dbHelper.CollectionExists(typeof(ComplexFactor).Name))
@@ -55,6 +55,40 @@ namespace OnlineDataCrawler.Data
             direction.Add(-1);
             dbHelper.CreateIndexes<ComplexFactor>(fields.ToArray(), direction.ToArray());
             return true;
+        }
+
+        public static List<StockHistoryPrice> ComputeComplexFactor(List<StockBonus> bonus, List<StockHistoryPrice> prices, StockHistoryPrice lastPrice)
+        {
+            var sortedBonus = bonus.OrderBy(x => x.BonusExemptionDate);
+            var bonusArray = sortedBonus.ToArray();
+            int bonusIndex = 0;
+            decimal lastFactor = 1;
+            if (lastPrice != null)
+                lastFactor = lastPrice.AnswerAuthority;
+            StockHistoryPrice lastDayPrice = null;
+            foreach(var price in prices)
+            {
+                var b = bonusArray[bonusIndex];
+                if(price.Date < b.BonusExemptionDate)
+                {
+                    price.AnswerAuthority = lastFactor;
+                }
+                else
+                {
+                    if(lastDayPrice != null)
+                    {
+                        decimal allotment = b.Allotment / 10 * b.AllotmentPrice;
+                        decimal authority = (lastDayPrice.ClosePrice + allotment) / (1 + allotment + b.BonusStockGift);
+                        authority = price.ClosePrice / authority;
+                        lastFactor *= authority;
+                        price.AnswerAuthority = lastFactor;
+                    }
+                    if(bonusIndex + 1 < bonusArray.Length)
+                        bonusIndex++;
+                }
+                lastDayPrice = price;
+            }
+            return prices;
         }
     }
 }
