@@ -1,5 +1,6 @@
 ﻿using MongoDB.Bson;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using OnlineDataCrawler.Util;
 using System;
 using System.Collections.Generic;
@@ -32,25 +33,31 @@ namespace OnlineDataCrawler.Data
             string response = HttpHelper.Get(sb.ToString());
             response = response.Replace("historySearchHandler(", "");
             response = response.Replace(")", "");
-            JArray jArray = JArray.Parse(response);
-            JObject jObject = jArray.Children()[0].Value<JObject>();
-            JArray hq = jObject.Value<JArray>("hq");
-            foreach (JToken item in hq)
+            JArray o = JArray.Parse(response);
+            foreach(var child in o.Children())
             {
-                StockHistoryPrice price = new StockHistoryPrice();
-                DateTime date = DateTime.Now;
-                var list = item.Children();
-                price.Date = DateTime.ParseExact(list[0].ToString(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.AssumeLocal);
+                if (child.HasValues)
+                {
+                    JArray hq = child.Value<JArray>("hq");
+                    foreach (JToken item in hq)
+                    {
+                        StockHistoryPrice price = new StockHistoryPrice();
+                        DateTime date = DateTime.Now;
+                        var list = item.Children();
+                        Console.WriteLine(list[0]);
+                        price.Date = DateTime.ParseExact(list[0].Value<string>(), "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.AssumeLocal);
 
-                price.OpenPrice = list[1].Value<decimal>();
-                price.ClosePrice = list[2].Value<decimal>();
-                price.LowestPrice = list[5].Value<decimal>();
-                price.HighestPrice = list[6].Value<decimal>();
-                price.Volume = list[7].Value<int>();
-                price.TurnoverAmount = (long)(list[8].Value<double>() * 10000);
-                price.TurnoverRatio = double.Parse(list[9].Value<string>().Replace("%", ""));
-                price.Stock = stock;
-                stockHistory.Add(price);
+                        price.OpenPrice = list[1].Value<decimal>();
+                        price.ClosePrice = list[2].Value<decimal>();
+                        price.LowestPrice = list[5].Value<decimal>();
+                        price.HighestPrice = list[6].Value<decimal>();
+                        price.Volume = list[7].Value<int>();
+                        price.TurnoverAmount = (long)(list[8].Value<double>() * 10000);
+                        price.TurnoverRatio = double.Parse(list[9].Value<string>().Replace("%", ""));
+                        price.Stock = stock;
+                        stockHistory.Add(price);
+                    }
+                }
             }
             lastPriceTime = DateTime.Now;
             return stockHistory;

@@ -313,56 +313,56 @@ namespace OnlineDataCrawler.Data
                 result = dbHelper.Find<StockHistoryPrice>(x => x.Stock.InnerID == stock.InnerID && x.Date <= endDate && x.Date >= startDate);
                 if (result == null || result.Count == 0)
                 {
-                    List<StockHistoryPrice> list;
-                    list = StockHistoryPrice.GetHistoryPrice(stock, startDate.Value, endDate.Value);
-                    var sortedResult = from re in result
-                                       orderby re.Date descending
-                                       select re;
-                    List<StockHistoryPrice> toAdd = new List<StockHistoryPrice>();
-                    foreach (var item in list)
-                    {
-                        bool isFound = false;
-                        foreach (var re in sortedResult)
-                        {
-                            if (item.Date.Day == re.Date.Day && item.Date.Month == re.Date.Month && item.Date.Year == re.Date.Year)
-                            {
-                                isFound = true;
-                                break;
-                            }
-                        }
-                        if (!isFound)
-                        {
-                            toAdd.Add(item);
-                        }
-                    }
-                    result.AddRange(toAdd);
-                    dbHelper.InsertMany(toAdd);
+                    //List<StockHistoryPrice> list;
+                    //list = StockHistoryPrice.GetHistoryPrice(stock, startDate.Value, endDate.Value);
+                    //var sortedResult = from re in result
+                    //                   orderby re.Date descending
+                    //                   select re;
+                    //List<StockHistoryPrice> toAdd = new List<StockHistoryPrice>();
+                    //foreach (var item in list)
+                    //{
+                    //    bool isFound = false;
+                    //    foreach (var re in sortedResult)
+                    //    {
+                    //        if (item.Date.Day == re.Date.Day && item.Date.Month == re.Date.Month && item.Date.Year == re.Date.Year)
+                    //        {
+                    //            isFound = true;
+                    //            break;
+                    //        }
+                    //    }
+                    //    if (!isFound)
+                    //    {
+                    //        toAdd.Add(item);
+                    //    }
+                    //}
+                    //result.AddRange(toAdd);
+                    //dbHelper.InsertMany(toAdd);
                 }
                 else
                 {
                     var sortedResult = from re in result
                                        orderby re.Date descending
                                        select re;
-                    var list = StockHistoryPrice.GetHistoryPrice(stock, sortedResult.ToArray()[0].Date, endDate.Value);
-                    List<StockHistoryPrice> toAdd = new List<StockHistoryPrice>();
-                    foreach (var item in list)
-                    {
-                        bool isFound = false;
-                        foreach (var re in sortedResult)
-                        {
-                            if (item.Date.Day == re.Date.Day && item.Date.Month == re.Date.Month && item.Date.Year == re.Date.Year)
-                            {
-                                isFound = true;
-                                break;
-                            }
-                        }
-                        if (!isFound)
-                        {
-                            toAdd.Add(item);
-                        }
-                    }
-                    result.AddRange(toAdd);
-                    dbHelper.InsertMany(toAdd);
+                    //var list = StockHistoryPrice.GetHistoryPrice(stock, sortedResult.ToArray()[0].Date, endDate.Value);
+                    //List<StockHistoryPrice> toAdd = new List<StockHistoryPrice>();
+                    //foreach (var item in list)
+                    //{
+                    //    bool isFound = false;
+                    //    foreach (var re in sortedResult)
+                    //    {
+                    //        if (item.Date.Day == re.Date.Day && item.Date.Month == re.Date.Month && item.Date.Year == re.Date.Year)
+                    //        {
+                    //            isFound = true;
+                    //            break;
+                    //        }
+                    //    }
+                    //    if (!isFound)
+                    //    {
+                    //        toAdd.Add(item);
+                    //    }
+                    //}
+                    //result.AddRange(toAdd);
+                    //dbHelper.InsertMany(toAdd);
                 }
             }
             catch (Exception ex)
