@@ -6,6 +6,7 @@ using OnlineDataCrawler.Data;
 using System.Reflection;
 using OnlineDataCrawler.Controller;
 using OnlineDataCrawler.Engine.Annotation;
+using OnlineDataCrawler.Logging;
 using OnlineDataCrawler.Util;
 
 namespace OnlineDataCrawler.Engine
@@ -32,6 +33,7 @@ namespace OnlineDataCrawler.Engine
                     {
                         var databaseObject = (IDatabaseObject)Activator.CreateInstance(type);
                         databaseObject.CheckDatabaseIndex();
+                        Log.Trace(type.Name + " check Database success.");
                     }
                     if (inter.Equals(typeof(IController)))
                     {

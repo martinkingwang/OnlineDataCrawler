@@ -71,5 +71,15 @@ namespace OnlineDataCrawler
             loop.Init();
             loop.Loop();
         }
+
+        private static void SigTermEventHandler(AssemblyLoadContext obj)
+        {
+            System.Console.WriteLine("Unloading...");
+        }
+
+        private static void CancelHandler(object sender, ConsoleCancelEventArgs e)
+        {
+            System.Console.WriteLine("Exiting...");
+        }
     }
 }

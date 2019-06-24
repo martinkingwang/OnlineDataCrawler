@@ -29,6 +29,7 @@ namespace OnlineDataCrawler.Util
 
         public static string Get(string url, CookieContainer cookies = null, string[] headers = null, Dictionary<string, string> parameters = null, string userAgent = null, string referer = null, Encoding encode = null)
         {
+            Logging.Log.Trace("Trying to get " + url);
             if (parameters != null)
             {
                 url += "?";

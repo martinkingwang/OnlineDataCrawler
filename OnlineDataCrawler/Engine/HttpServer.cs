@@ -46,7 +46,7 @@ namespace OnlineDataCrawler.Engine
         public void Start()
         {
             _listener = new HttpListener();
-            _listener.Prefixes.Add("http://localhost:" + Port + "/");
+            _listener.Prefixes.Add("http://*:" + Port + "/");
             _listener.Start();
             var task = Task.Run(new Action(Process));
         }
